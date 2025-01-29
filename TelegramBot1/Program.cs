@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Telegram.Bot;
-using Telegram.Bot.Exceptions;
+﻿using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -14,7 +8,7 @@ class Program
     private static readonly string BotToken = "7771502471:AAHcLGqq8Q6Mwb92A30A1WTRWALYDYVQMxA";
     private static long ChatId = 0; // Global chatId
 
-    // Global list to store meeting themes
+    // Global list to store meeting topics
     private static readonly List<string> AvailableThemes = new List<string>();
 
     // Dictionary to store active polls and their results
@@ -63,44 +57,44 @@ class Program
         var message = update.Message;
         long chatId = message.Chat.Id; // Use local chatId variable
         var command = message.Text.Split(' ')[0];
-
+        var botUrl = await botClient.GetMe();
         switch (command)
         {
-            case "/topic":
-                var theme = message.Text.Substring(6).Trim();
-                if (!string.IsNullOrEmpty(theme))
+            case "/topic@FirdavsManageBot":
+                var topic = message.Text.Substring(6).Trim();
+                if (!string.IsNullOrEmpty(topic))
                 {
-                    AvailableThemes.Add(theme);
-                    await botClient.SendTextMessageAsync(chatId, $"Theme '{theme}' has been added to the list.");
+                    AvailableThemes.Add(topic);
+                    await botClient.SendMessage(chatId, $"Theme '{topic}' has been added to the list.");
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Please provide a valid theme after /topic.");
+                    await botClient.SendMessage(chatId, "Please provide a valid topic after /topic.");
                 }
                 break;
 
-            case "/start":
-                await botClient.SendTextMessageAsync(chatId, "Welcome! Use /topic <theme> to add a theme for the meeting.");
+            case "/start@FirdavsManageBot":
+                await botClient.SendMessage(chatId, "Welcome! Use /topic <topic> to add a topic for the meeting.");
                 break;
 
-            case "/meeting":
-                await botClient.SendTextMessageAsync(
+            case "/meeting@FirdavsManageBot":
+                await botClient.SendMessage(
                     chatId,
                     "The video call for today's meeting starts now! Join via this link: [Meeting Link](http://example.com/meeting)",
                     parseMode: ParseMode.Markdown
                 );
                 break;
 
-            case "/poll":
+            case "/poll@FirdavsManageBot":
                 await CreatePoll(botClient, chatId);
                 break;
 
-            case "/result":
+            case "/result@FirdavsManageBot":
                 await AnnounceMeetingTopic(botClient, chatId);
                 break;
 
             default:
-                await botClient.SendTextMessageAsync(chatId, "Unknown command. Please use /topic, /start, /meeting, /poll, or /result.");
+                await botClient.SendMessage(chatId, "Unknown command. Please use /topic, /start, /meeting, /poll, or /result.");
                 break;
         }
 
@@ -118,13 +112,13 @@ class Program
 
     static async Task CreatePoll(ITelegramBotClient botClient, long chatId)
     {
-        if (AvailableThemes.Count < 1)
+        if (AvailableThemes.Count < 2)
         {
-            await botClient.SendTextMessageAsync(chatId, "Not enough themes available for the poll. Please add more themes using /topic <theme>.");
+            await botClient.SendMessage(chatId, "Not enough topics available for the poll. Please add more topics using /topic <topic>.");
             return;
         }
 
-        // Randomly select 6 themes from the available list
+        // Randomly select 6 topics from the available list
         var random = new Random();
         var selectedThemes = AvailableThemes.OrderBy(x => random.Next()).Take(6).ToList();
 
@@ -140,10 +134,11 @@ class Program
             chatId: chatId,
             question: question,
             options: options,
-            isAnonymous: false
+            isAnonymous: false,
+            allowsMultipleAnswers : true
         );
 
-        await botClient.PinChatMessageAsync(chatId, pollMessage.MessageId);
+        await botClient.PinChatMessage(chatId, pollMessage.MessageId);
 
         // Track the poll
         ActivePolls[pollMessage.Poll.Id] = selectedThemes.ToDictionary(option => option, _ => 0);
@@ -167,7 +162,7 @@ class Program
     {
         if (!ActivePolls.Any())
         {
-            await botClient.SendTextMessageAsync(chatId, "No active poll results available.");
+            await botClient.SendMessage(chatId, "No active poll results available.");
             return;
         }
 
@@ -176,7 +171,7 @@ class Program
         var mostVoted = pollResults.OrderByDescending(x => x.Value).First();
 
         var message = $"The most voted topic is: **{mostVoted.Key}**. See you in the meeting at 8 PM!";
-        await botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown);
+        await botClient.SendMessage(chatId, message, parseMode: ParseMode.Markdown);
 
         AvailableThemes.Remove(mostVoted.Key);
 
@@ -186,7 +181,7 @@ class Program
     static async Task SendVideoCallReminder(ITelegramBotClient botClient, long chatId)
     {
         var message = "Reminder: The English-speaking meeting starts now! Join the video chat!";
-        await botClient.SendTextMessageAsync(chatId, message);
+        await botClient.SendMessage(chatId, message);
     }
 
     static void ScheduleDailyTasks(ITelegramBotClient botClient, CancellationToken token)
