@@ -31,8 +31,6 @@ class Program
             cancellationToken: cts.Token
         );
 
-        ScheduleDailyTasks(botClient, cts.Token);
-
         Console.ReadLine();
         cts.Cancel();
     }
@@ -57,7 +55,7 @@ class Program
         var message = update.Message;
         long chatId = message.Chat.Id; // Use local chatId variable
         var command = message.Text.Split(' ')[0];
-        var botUrl = await botClient.GetMe();
+        ChatId = chatId;
         switch (command)
         {
             case "/topic@FirdavsManageBot":
@@ -91,10 +89,6 @@ class Program
 
             case "/result@FirdavsManageBot":
                 await AnnounceMeetingTopic(botClient, chatId);
-                break;
-
-            default:
-                await botClient.SendMessage(chatId, "Unknown command. Please use /topic, /start, /meeting, /poll, or /result.");
                 break;
         }
 
@@ -135,7 +129,7 @@ class Program
             question: question,
             options: options,
             isAnonymous: false,
-            allowsMultipleAnswers : true
+            allowsMultipleAnswers: true
         );
 
         await botClient.PinChatMessage(chatId, pollMessage.MessageId);
@@ -176,54 +170,5 @@ class Program
         AvailableThemes.Remove(mostVoted.Key);
 
         ActivePolls.Remove(pollId);
-    }
-
-    static async Task SendVideoCallReminder(ITelegramBotClient botClient, long chatId)
-    {
-        var message = "Reminder: The English-speaking meeting starts now! Join the video chat!";
-        await botClient.SendMessage(chatId, message);
-    }
-
-    static void ScheduleDailyTasks(ITelegramBotClient botClient, CancellationToken token)
-    {
-        // Create poll at 9 AM
-        ScheduleTask(10, 22, async () =>
-        {
-            if (ChatId != 0)
-            {
-                await CreatePoll(botClient, ChatId);
-            }
-        }, token);
-
-        // Announce the meeting topic at 5 PM
-        ScheduleTask(17, 0, async () =>
-        {
-            if (ChatId != 0)
-            {
-                await AnnounceMeetingTopic(botClient, ChatId);
-            }
-        }, token);
-
-        // Send a video call reminder at 8 PM
-    }
-
-    static void ScheduleTask(int hour, int minute, Func<Task> task, CancellationToken token)
-    {
-        Task.Run(async () =>
-        {
-            while (!token.IsCancellationRequested)
-            {
-                var now = DateTime.Now;
-                var scheduledTime = DateTime.Today.AddHours(hour).AddMinutes(minute);
-
-                if (now > scheduledTime)
-                    scheduledTime = scheduledTime.AddDays(1);
-
-                var delay = scheduledTime - now;
-                await Task.Delay(delay, token);
-
-                await task();
-            }
-        }, token);
     }
 }
